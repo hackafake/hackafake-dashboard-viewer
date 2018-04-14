@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="fun.rokers.hackafake.hackafake_dashboard_viewer">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application>
         <uses-library android:name="com.google.android.things" />
 
