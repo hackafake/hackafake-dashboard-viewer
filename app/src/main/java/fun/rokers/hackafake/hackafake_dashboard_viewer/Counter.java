@@ -1,28 +1,20 @@
 package fun.rokers.hackafake.hackafake_dashboard_viewer;
 
 import android.content.Context;
+import android.media.MediaPlayer;
 import android.os.Handler;
 import android.util.Log;
-
-import com.google.android.things.pio.Gpio;
-import com.google.android.things.pio.PeripheralManager;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
-
 public class Counter implements Runnable {
     private Handler handler;
-    private int pFake_count=0;
-    private boolean blinking=false;
-    private Gpio mGpio = null;
-    private Handler h;
+    private FakeMeter fakeMeter;
+    private int pFake_count=0,pReal_count=0;
+    private MediaPlayer mp;
 
-    private static String GPIO = "BCM26";
     private static long DELAY_MILLIS=2*1000;
-    private static long LED_DELAY_MILLIS=2*1000;
-    //TODO: set right url address
     private static String URL="https://api.hackafake.it/counter";
 
     private static String COUNTER_FAKE_FIELD = "fake";
@@ -31,20 +23,14 @@ public class Counter implements Runnable {
 
     public Counter(Context appContext) {
         this.handler=new Handler();
-        PeripheralManager peripheralManager = PeripheralManager.getInstance();
-        try {
-            mGpio = peripheralManager.openGpio(GPIO);
-            mGpio.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
-         } catch (IOException e) {
-            Log.d("ERROR", e.getStackTrace().toString());
-        }
-
-        h = new Handler();
+        mp = MediaPlayer.create(appContext,R.raw.alarm);
+        fakeMeter = new FakeMeter();
         handler.post(this);
     }
 
     public void close() {
         handler.removeCallbacks(this);
+        fakeMeter.close();
     }
 
     @Override
@@ -65,32 +51,30 @@ public class Counter implements Runnable {
             } catch (NullPointerException e) {
                 Log.d("ERROR","NullPointerException");
             } catch (JSONException e) {
-                Log.d("ERROR", e.getStackTrace().toString());
+                e.printStackTrace();
             }
-            //play sound if new fake news
-            if(fake_count-pFake_count > 0 && !blinking && pFake_count > 0) {
-                Log.d("INFO","Blinking");
-                try {
-                    mGpio.setValue(true);
-                    blinking=true;
-                } catch (IOException e) {
-                    Log.d("ERROR", e.getStackTrace().toString());
-                }
-                h.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.d("INFO","Stop blinking");
-                        try{
-                            mGpio.setValue(false);
-                            blinking=false;
-                        } catch (IOException e) {
-                            Log.d("ERROR", e.getStackTrace().toString());
-                        }
-                    }
-                },LED_DELAY_MILLIS);
+            double density;
+            try {
+                density = ((double)fake_count)/((double)(real_count+fake_count));
+            } catch (ArithmeticException e) {
+                density = 0;
+            }
+            fakeMeter.updateCount(density);
+
+            //check for news
+            int new_fake = fake_count-pFake_count;
+            int new_real = real_count-pReal_count;
+            if((new_fake > 0 || new_real > 0) && !mp.isPlaying() && pFake_count > 0) {
+                Log.d("INFO", "playing sound!");
+                if(new_fake > 0)
+                    mp.start();
                 pFake_count = fake_count;
-            } else if (pFake_count <= 0)
+                pReal_count = real_count;
+            } else if (pFake_count <= 0) {
                 pFake_count = fake_count;
+                pReal_count = real_count;
+            }
+
         }
     }
 }

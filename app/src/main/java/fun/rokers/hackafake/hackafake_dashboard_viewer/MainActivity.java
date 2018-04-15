@@ -42,7 +42,6 @@ public class MainActivity extends Activity implements KeyEvent.Callback {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        Log.d("INFO", "KeyCode deteched: " + keyCode);
         if(keyCode == 4) {
             webView.loadUrl(HOME_URL);
             return true;
